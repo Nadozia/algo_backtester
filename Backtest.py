@@ -1,7 +1,7 @@
 from Scraper import scraper
 from Indicators import Indicators
 import pandas as pd
-from Strategies import boll_mid_ma_buy, boll_mid_ma_sell, counting_high, boll_low_buy
+from Strategies import boll_low_buy_simple, boll_up_sell
 import numpy as np
 
 from plotly.offline import plot
@@ -32,7 +32,6 @@ class backtester:
 
     def backtest(self):
         df = self.df
-        current_high = 0
         pair = []
 
         for i in range(df.shape[0]-1):
@@ -48,48 +47,55 @@ class backtester:
                         self.cash = self.cash-buy_condition[1]*buy_positions
                         self.position = buy_positions
                         self.equity = df['Close'][i]*buy_positions
-                        current_high = counting_high(df, buy_condition[0], current_high)
                         pair.extend([df.index[i], buy_positions, buy_condition[1]])       
                                             
                 else:
                     self.equity = df['Close'][i]*self.position
                                         
             else:
-                current_high = counting_high(df, i, current_high)
-                sell_condition = self.sell_strategy(df, i, current_high)
+
+                sell_condition = self.sell_strategy(df, i)
                 # If stop_loss is applicable
                 if self.stop_loss:
-                    print('Stoploss')
                     last_buy_price = self.buy_signal[-1][1]
                     stop_loss_price = last_buy_price*(1-self.stop_loss)
-                    if df['Close'][i] < stop_loss_price:
-                        self.sell_signal.append((i, df['Close'][i]))
-                        self.cash = self.cash + df['Close'][i]*self.position
+                    if df['Low'][i] < stop_loss_price:
+                        self.sell_signal.append((i, stop_loss_price))
+
+                        #reset pair
+                        gnlPerShare = stop_loss_price-pair[2]
+                        pair.extend([stop_loss_price, gnlPerShare*self.position])
+                        series = pd.Series(pair, index=self.result_pair_df.columns)
+                        self.result_pair_df = self.result_pair_df.append(series, ignore_index=True)
+
+                        pair = []
+
+                        self.cash = self.cash + stop_loss_price*self.position
                         self.equity = 0
                         self.position = 0
-                        current_high = 0
 
-                        #print('[*] Stop loss triggered on '+str(df.index[i])+' at price: '+ str(df['Close'][i]))
+                        print('[*] Stop loss triggered on '+str(df.index[i])+' at price: '+ str(df['Close'][i]))
                         self.stop_loss_count +=1
                         continue
-                elif sell_condition is not None:
-                    self.sell_signal.append(sell_condition)
 
-                    gnlPerShare = sell_condition[1]-pair[2]
-                    pair.extend([sell_condition[1], gnlPerShare*self.position])
-                    series = pd.Series(pair, index=self.result_pair_df.columns)
-                    self.result_pair_df = self.result_pair_df.append(series, ignore_index=True)
+                    elif sell_condition is not None:
+                        self.sell_signal.append(sell_condition)
 
-                    pair = []
-                    self.cash = self.cash + sell_condition[1]*self.position
-                    self.equity = 0
-                    self.position = 0
+                        gnlPerShare = sell_condition[1]-pair[2]
+                        pair.extend([sell_condition[1], gnlPerShare*self.position])
+                        series = pd.Series(pair, index=self.result_pair_df.columns)
+                        self.result_pair_df = self.result_pair_df.append(series, ignore_index=True)
+
+                        pair = []
+                        self.cash = self.cash + sell_condition[1]*self.position
+                        self.equity = 0
+                        self.position = 0
                     
-                    #print('[-] Sell Signal detected on '+str(df.index[i])+' at price: '+ str(sell_condition[1]))
-                    current_high = 0
-                else:
-                    self.equity = df['Close'][i]*self.position
-            self.update_result_balance(df.index[i])
+                    else:
+                        self.equity = df['Close'][i]*self.position
+
+                self.update_result_balance(df.index[i])
+
         self.result_balance_df['Daily_return'] = self.result_balance_df['Balance'].pct_change(1)
         sharpe_ratio = self.result_balance_df['Daily_return'].mean()/self.result_balance_df['Daily_return'].std()
         print(f"Report of {self.symbol}")
@@ -237,7 +243,7 @@ def main():
     
     test_list = ['SPY']
     for item in test_list:
-        tester = backtester(symbol=item, period='d', initial_balance=2000, buy_strategy=boll_low_buy, sell_strategy=boll_mid_ma_sell)
+        tester = backtester(symbol=item, period='d', initial_balance=2000, buy_strategy=boll_low_buy_simple, sell_strategy=boll_up_sell, stop_loss=0.02)
         tester.backtest() 
        
     

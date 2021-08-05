@@ -1,5 +1,29 @@
 from Indicators import Indicators
 
+def boll_low_buy_simple(df, i:int):
+    indicators = [
+        ('Low_boll', 22)
+    ]
+
+    adding_indicators(df, indicators)
+
+    if df['Low'][i]<df['Low_boll'][i]:
+        return i, df['Open'][i+1]
+    else:
+        return None
+
+def boll_up_sell(df, i:int):
+    indicators = [
+        ('Up_boll', 22)
+    ]
+
+    adding_indicators(df, indicators)
+
+    if df['High'][i]>df['Up_boll'][i]:
+        return i, df['Up_boll'][i]
+    else:
+        return None
+
 def boll_ma_buy1(df, i:int):
     indicators = [
         ('Low_boll', 14)
