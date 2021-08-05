@@ -1,0 +1,28 @@
+1.  Data type
+    -string/str eg. 'I go to school by bus.'
+    -int eg. 100456
+    -float eg. 1100.456
+    -bool eg. True False
+    -array eg. [1,2,3,4,5]
+    -object/dictionary eg. {'age':12, 'name':'ipok', 'weight':{'year_2011':'150lb', 'year_2022':'200lb'}}
+    -others datetime, pandas dataframe, pandas series
+    
+String method:
+    uppercase
+    lowercase
+    replace
+    __contains__
+    split
+    lstrip / rstrip / strip
+
+Array method:
+    [0:] (slicing)
+    append
+    extend
+    remove/del/pop
+    index
+    reverse
+
+iterable common use:
+    filter
+    map 
